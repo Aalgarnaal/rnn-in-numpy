@@ -4,24 +4,69 @@
 import numpy as np
 from sklearn.preprocessing import LabelBinarizer
 from random import uniform
-from nltk.corpus import reuters
+from nltk.corpus import reuters, stopwords
+from nltk import word_tokenize
 from tqdm import tqdm
+import re
+
+# ==== Text processing constants
+BLACKLIST_STOPWORDS = ["over", "only", "very", "not", "no"]
+ENGLISH_STOPWORDS = set(stopwords.words("english")) - set(BLACKLIST_STOPWORDS)
+NEG_CONTRACTIONS = [
+    (r"aren\'t", "are not"),
+    (r"can\'t", "can not"),
+    (r"couldn\'t", "could not"),
+    (r"daren\'t", "dare not"),
+    (r"didn\'t", "did not"),
+    (r"doesn\'t", "does not"),
+    (r"don\'t", "do not"),
+    (r"isn\'t", "is not"),
+    (r"hasn\'t", "has not"),
+    (r"haven\'t", "have not"),
+    (r"hadn\'t", "had not"),
+    (r"mayn\'t", "may not"),
+    (r"mightn\'t", "might not"),
+    (r"mustn\'t", "must not"),
+    (r"needn\'t", "need not"),
+    (r"oughtn\'t", "ought not"),
+    (r"shan\'t", "shall not"),
+    (r"shouldn\'t", "should not"),
+    (r"wasn\'t", "was not"),
+    (r"weren\'t", "were not"),
+    (r"won\'t", "will not"),
+    (r"wouldn\'t", "would not"),
+    (r"ain\'t", "am not"),  # not only but stopword anyway
+]
+OTHER_CONTRACTIONS = {
+    "'m": "am",
+    "'ll": "will",
+    "'s": "has",  # or 'is' but both are stopwords
+    "'d": "had",  # or 'would' but both are stopwords
+}
+
+
 fileids = reuters.fileids()
 
-all_text= ""
+all_text = ""
 
 for file in tqdm(fileids):
-    all_text+=reuters.raw(file)
+    raw_doc = reuters.raw(file)
+    raw_doc = raw_doc.lower()
+    for t in NEG_CONTRACTIONS:
+        doc = re.sub(t[0], t[1], raw_doc)
+    # tokenize
+    tokens = word_tokenize(doc)
+    # transform other contractions (e.g 'll --> will)
+    tokens = [
+        OTHER_CONTRACTIONS[token] if OTHER_CONTRACTIONS.get(token) else token
+        for token in tokens
+    ]
+    # remove punctuation
+    r = r"^[a-zA-Z\s]*$"
+    tokens = [word for word in tokens if re.search(r, word)]
+    tokens_string = " ".join(word for word in tokens)
+    all_text += tokens_string
 data = all_text
-# data = open("shakespeare.txt", "r").read()  # should be simple plain text file
-data = data.lower()  # We dont want upper/lowercase to impact the word prediction
-data = data.replace("\n", " ")
-# data = data.replace("'", " ")
-# data = data.replace("!", " ")
-# data = data.replace("?", " ")
-# data = data.replace(":", " ")
-# #data = "I am once again doing a test sentence here, the purpose is not to train a network or anything fancy, we are just debugging why stuff isnt working. You may wonder why this sentence is so long, that is because it will take too long otherwise and so random words like pineapple and stuff will work"
-
 # Convert every word to one hot
 unique_words_list = list(set(data))
 
@@ -40,7 +85,7 @@ print(unique_words_list)
 # Initialize matrices & vectors (w and bias)
 
 vocab_size = len(set(data))  # Number of unique words + space
-hidden_size = 400
+hidden_size = 50
 
 w_xh = np.random.rand(hidden_size, vocab_size) / 100
 w_hh = np.random.rand(hidden_size, hidden_size) / 100
@@ -48,6 +93,7 @@ w_hy = np.random.rand(vocab_size, hidden_size) / 100
 
 b_h = np.random.rand(hidden_size, 1)
 b_y = np.random.rand(vocab_size, 1)
+
 
 def sample(h, starting_word, sentence_length):
     """
@@ -83,7 +129,6 @@ def gradCheck(inputs, hprev):
     ):
         s0 = dparam.shape
         s1 = param.shape
-        print(name)
         assert s0 == s1, "Error dims dont match: %s and %s." % (repr(s0), repr(s1))
         for i in range(num_checks):
             ri = int(uniform(0, param.size))
@@ -128,10 +173,7 @@ def loss_function(inputs, hprev):
         target = np.array(word_onehot_dict[inputs[i + 1]])[
             :, np.newaxis
         ]  # target (next word in sequence)
-        loss += -np.log(
-            np.multiply(target, y_normalized).sum()
-        )  # Its just taking the y_normalized at index of correct wor
-
+        loss += -np.log(np.multiply(target, y_normalized).sum())
         # Store in dicts for backprop later on (and next iteration of h)
         h_dict[i] = h
         y_normalized_dict[i] = y_normalized
@@ -164,19 +206,18 @@ def loss_function(inputs, hprev):
         dLdw_hh += np.dot(helper, h_dict[j - 1].T)
         dhnext = np.dot(w_hh.T, helper)
 
-    for dparam in [dLdw_xh, dLdw_hh, dLdw_hy, dLdb_h, dLdb_y]:
-        np.clip(dparam, -5, 5, out=dparam)  # clip to mitigate exploding gradients
+    #    for dparam in [dLdw_xh, dLdw_hh, dLdw_hy, dLdb_h, dLdb_y]:
+    #        np.clip(dparam, -1, 1, out=dparam)  # clip to mitigate exploding gradients
     return loss, dLdw_xh, dLdw_hh, dLdw_hy, dLdb_h, dLdb_y, h_dict[len(inputs) - 2]
 
 
 # In[ ]:
 
 print("Initialized everything!")
-seq_length = 150
+seq_length = 50
 i = 0
 learning_rate = 0.001
 smooth_loss = -np.log(1.0 / vocab_size) * seq_length  # loss at iteration 0
-print(len(data))
 while i + seq_length < len(data):
     if i == 0:
         hprev = np.zeros((hidden_size, 1))  # reset RNN memory
@@ -185,7 +226,7 @@ while i + seq_length < len(data):
     loss, dLdw_xh, dLdw_hh, dLdw_hy, dLdb_h, dLdb_y, hprev = loss_function(
         inputs, hprev
     )
-    #gradCheck(inputs, hprev)
+    # gradCheck(inputs, hprev)
 
     smooth_loss = smooth_loss * 0.999 + loss * 0.001
     mw_xh, mw_hh, mw_hy = np.zeros_like(w_xh), np.zeros_like(w_hh), np.zeros_like(w_hy)
@@ -202,9 +243,8 @@ while i + seq_length < len(data):
     if i % 100 == 0:
         print(i)
         print(smooth_loss)
-        generated_letters = sample(hprev, starting_word="a", sentence_length=200)
+        generated_letters = sample(hprev, starting_word="a", sentence_length=500)
         txt = "".join(generated_letter for generated_letter in generated_letters)
         print("----\n %s \n----" % (txt,))
 
     i += 1
-ii
