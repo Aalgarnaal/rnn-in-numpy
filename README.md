@@ -54,3 +54,9 @@ Our starting point here was the following:
 The starting point does indeed look like a pretty random collection of words.
 
 Our RNN didn't learn any context, but it seems to be in the right direction. Words like the, and, of, and to are noticed to be more common than a word like "duvalier".
+
+# Conclusion
+
+While it was fun to do everything from scratch in Numpy, results were not amazing. I'm glad to see that the results did point in the right direction though.
+
+I'm curious to see what the results would look like if we used an LSTM for this. At some point, I will try that and add it to the repository.
