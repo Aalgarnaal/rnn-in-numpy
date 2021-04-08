@@ -41,7 +41,7 @@ Another potential approach is to train the model on words, see `rnn_words.py`. I
 Also, in this case we are trying to primarily learn context over "word generation rules", which I think is more difficult to learn.
 
 
-Here's a sample of the best run I managed to get with this approach (33.59):
+Here's a sample of the best run I managed to get with this approach (best score 33.59):
 
 ` the the of searle of the tension of of participants of of involve errors of the buying of kakuei of of the of assistancephysio coupon the industrialized of the nl tae of the the agoec the sluggish foot carryover el of the of unie rationalise the of pooled the nwnl pty the the chemicals reckoned of to the dmd variables of dividends of of the the and to the accused gy regie to harahap of counselor to the of forms to of of and the to of hiss the the oy judy concerted electronic battle of the the hampshire of equiment the the of momentum vsbranch of ranching the a of of suger the of of gisela the expensive compliance the the tension the of the telling of receiving the the of of and averaging of of the the salary doe dds the of the to recovered li the institutions the of michigan btu deficitroyal ether of pact actively concerns bulgur the of accelerate of the of the said the of of the of consummation of capitalbowater the of the stevenson the of to notable the saidjoins senate explain to saidsystems the feeling the strong thinks v of of the 
 `
